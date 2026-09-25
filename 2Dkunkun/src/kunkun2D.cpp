@@ -96,8 +96,72 @@ struct Bone2D
     Bone2D(Eigen::Vector2f position, float angle, float halflength, float radius, float mass)
         : position(position), angle(angle), halflength(halflength), radius(radius), mass(mass)
     {
-        inertia = (1.0f / 3.0f) * mass * halflength * halflength;
+        float length = 2 * halflength;
+        float width = 2 * radius;
+        inertia = (1.0f / 12.0f) * mass * (length * length + width * width);
     }
+
+    Eigen::Vector2f wolrdPoint(Eigen::Vector2f localPoint) const
+    {
+        float cosAngle = cos(angle);
+        float sinAngle = sin(angle);
+        Eigen::Vector2f rotatedPoint(cosAngle * localPoint.x() - sinAngle * localPoint.y(),
+                                     sinAngle * localPoint.x() + cosAngle * localPoint.y());
+        return position + rotatedPoint;
+    }
+
+
+    void draw()
+    {
+        Eigen::Vector2f direction(cos(angle), sin(angle));
+        Eigen::Vector2f positionleft = position - direction * halflength;
+        Eigen::Vector2f positionright = position + direction * halflength;
+
+        Eigen::Vector2f unit_direction = direction.normalized();
+        Eigen::Vector2f perpendicular(-unit_direction.y(), unit_direction.x());
+
+        Eigen::Vector2f circleleft = positionleft + unit_direction * radius;
+        Eigen::Vector2f circleright = positionright - unit_direction * radius;
+
+        glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
+        glBegin(GL_QUADS);
+        glVertex2f((circleright + perpendicular * radius).x(), (circleright + perpendicular * radius).y());
+        glVertex2f((circleright - perpendicular * radius).x(), (circleright - perpendicular * radius).y());
+        glVertex2f((circleleft - perpendicular * radius).x(), (circleleft - perpendicular * radius).y());
+        glVertex2f((circleleft + perpendicular * radius).x(), (circleleft + perpendicular * radius).y());
+        glEnd();
+
+        for (Eigen::Vector2f circlePos : {circleleft, circleright})
+        {
+            glBegin(GL_TRIANGLE_FAN);
+            glVertex2f(circlePos.x(), circlePos.y());
+            for (int i = 0; i <= 100; ++i)
+            {
+                float angle = 2.0f * M_PI * i / 100;
+                float x = circlePos.x() + radius * cos(angle);
+                float y = circlePos.y() + radius * sin(angle);
+                glVertex2f(x, y);
+            }
+            glEnd();
+        }
+
+    }
+
+};
+
+struct Joint2D
+{
+    Bone2D *boneA, *boneB;
+    Eigen::Vector2f anchorA_local, anchorB_local;
+    float maxTorque = std::numeric_limits<float>::infinity();
+
+    float targetAngle = 0.0f;
+    float stiffness = 0.0f;
+
+    
+
+
+
 
 };
 
